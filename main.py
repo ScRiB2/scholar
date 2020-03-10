@@ -51,4 +51,5 @@ def get_all_pubs(query):
 
 
 if __name__ == '__main__':
-    get_all_pubs('Perception of physical stability and center of mass of 3D objects')
+    query = 'Perception of physical stability and center of mass of 3D objects'
+    get_all_pubs(query)

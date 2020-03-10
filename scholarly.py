@@ -321,6 +321,7 @@ def search_pubs_query(query):
     """Search by scholar query and return a generator of Publication objects"""
     url = _PUBSEARCH.format(requests.utils.quote(query))
     soup = _get_soup(_HOST + url)
+    print(soup.prettify())
     return _search_scholar_soup(soup)
 
 
