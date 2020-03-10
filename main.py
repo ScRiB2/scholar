@@ -19,7 +19,9 @@ def get_all_info_from_pub(pub):
     abstract = bib['abstract']
     citedby = fill_pub.citedby
     authors = bib['author']
-    publisher = bib['publisher']
+    publisher = 'none'
+    if 'publisher' in bib:
+        publisher = bib['publisher']
     year = bib['year']
     url = bib['url']
     return {
@@ -34,7 +36,7 @@ def get_all_info_from_pub(pub):
 
 
 def save_in_file(info):
-    with open('C:\\scholar.csv', 'a', newline='') as f:
+    with open('C:\\scholar.csv', 'a', newline='', encoding='utf-8') as f:
         w = csv.DictWriter(f, info.keys(), delimiter=';')
         w.writerow(info)
 
@@ -43,14 +45,22 @@ def get_all_pubs(query):
     # scholarly.use_proxy('socks5://5.101.50.175:1080', 'socks5://5.101.50.175:1080')
     search_query = scholarly.search_pubs_query(query)
     pub = get_next(search_query)
-    while not (pub is None):
-        print('Результат получен. Начинаем обработку...')
+    i = 0
+    while (not (pub is None)) and i < 20:
+        print('Обрабатываем ' + str(i + 1) + ' публикацию...')
         info = get_all_info_from_pub(pub)
         save_in_file(info)
+        i += 1
         pub = get_next(search_query)
-    print('Все публикации получены')
+
+    if (i == 0):
+        print('Похоже Google заблокировал нас... Ну или таких публикаций не существует')
+    else:
+        print('Получено публикаций: ' + str(i+1))
 
 
 if __name__ == '__main__':
-    query = 'Perception of physical stability and center of mass of 3D objects'
+    print('Начинаем работу')
+    query = '123'
+    print('Ваш запрос: ' + query)
     get_all_pubs(query)
