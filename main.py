@@ -4,7 +4,7 @@ import scholarly
 
 
 def get_next(query):
-    """Get next object from generator"""
+    """Получаем следующий объект из генератора"""
     try:
         elem = next(query)
     except StopIteration:
@@ -13,7 +13,7 @@ def get_next(query):
 
 
 def get_all_info_from_pub(pub):
-    fill_pub = pub.fill()
+    fill_pub = pub.fill()  # получаем полную инфу о публикации
     bib = fill_pub.bib
     title = bib['title']
     abstract = bib['abstract']
@@ -48,19 +48,19 @@ def get_all_pubs(query):
     i = 0
     while (not (pub is None)) and i < 20:
         print('Обрабатываем ' + str(i + 1) + ' публикацию...')
-        info = get_all_info_from_pub(pub)
-        save_in_file(info)
+        info = get_all_info_from_pub(pub)  # получаем нужную инфу из публикации
+        save_in_file(info)  # сохраняем в файл
         i += 1
         pub = get_next(search_query)
 
     if (i == 0):
         print('Похоже Google заблокировал нас... Ну или таких публикаций не существует')
     else:
-        print('Получено публикаций: ' + str(i+1))
+        print('Получено публикаций: ' + str(i + 1))
 
 
 if __name__ == '__main__':
     print('Начинаем работу')
-    query = '123'
-    print('Ваш запрос: ' + query)
+    query = input("Введите запрос: ")  # тут мы пишем наш запрос
+    print("Запрос принят. Начинаем обработку")
     get_all_pubs(query)

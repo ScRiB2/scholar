@@ -1,7 +1,5 @@
 """scholarly.py"""
 
-# from __future__ import absolute_import, division, print_function, unicode_literals
-
 from bs4 import BeautifulSoup
 
 import arrow
@@ -12,7 +10,6 @@ import pprint
 import random
 import re
 import requests
-import sys
 import time
 
 _GOOGLEID = hashlib.md5(str(random.random()).encode('utf-8')).hexdigest()[:16]
