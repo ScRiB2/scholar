@@ -99,7 +99,7 @@ def _get_soup(pagerequest):
     return BeautifulSoup(html, 'html.parser')
 
 
-def _search_scholar_soup(soup):
+def search_scholar_soup(soup):
     """Generator that returns Publication objects from the search page"""
     while True:
         for row in soup.find_all('div', 'gs_or'):
@@ -215,8 +215,8 @@ class Publication(object):
                 self.bib['eprint'] = soup.find('div', class_='gsc_vcd_title_ggi').a['href']
             self._filled = True
         elif self.source == 'scholar':
-            bibtex = _get_page(self.url_scholarbib)
-            self.bib.update(bibtexparser.loads(bibtex).entries[0])
+            # bibtex = _get_page(self.url_scholarbib)
+            # self.bib.update(bibtexparser.loads(bibtex).entries[0])
             self._filled = True
         return self
 
