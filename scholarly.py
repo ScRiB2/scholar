@@ -24,7 +24,7 @@ _AUTHSEARCH = '/citations?view_op=search_authors&hl=en&mauthors={0}'
 _CITATIONAUTH = '/citations?user={0}&hl=en'
 _CITATIONPUB = '/citations?view_op=view_citation&citation_for_view={0}'
 _KEYWORDSEARCH = '/citations?view_op=search_authors&hl=en&mauthors=label:{0}'
-_PUBSEARCH = '/scholar?hl=en&q={0}'
+_PUBSEARCH = '/scholar?lookup=0&hl=en&q={0}'
 _SCHOLARPUB = '/scholar?oi=bibs&hl=en&cites={0}'
 
 _CITATIONAUTHRE = r'user=([\w-]*)'
@@ -164,6 +164,7 @@ class Publication(object):
                 if self.bib['abstract'][0:8].lower() == 'abstract':
                     self.bib['abstract'] = self.bib['abstract'][9:].strip()
             lowerlinks = databox.find('div', class_='gs_fl').find_all('a')
+            self.citedby = 0
             for link in lowerlinks:
                 if 'Import into BibTeX' in link.text:
                     self.url_scholarbib = link['href']
