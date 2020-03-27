@@ -3,12 +3,15 @@ import time
 from pprint import pprint
 
 import bibtexparser
+from bibtexparser.bparser import BibTexParser
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
+
+from playsound import playsound
 
 import scholarly
 
@@ -28,6 +31,7 @@ def get_next_pub(query):
 
 
 def get_all_info_from_pub(pub):
+    """Получаем из публикации нужную на информацию"""
     bib = pub.bib
     title = bib['title']
     abstract = bib['abstract']
@@ -58,6 +62,7 @@ def get_all_info_from_pub(pub):
 
 
 def close_window(driver):
+    """Закрыаем окно браузера и переключаемся на текущую вкладку"""
     driver.execute_script("window.close()")
     global _current_page
     _current_page = _current_page - 1
@@ -66,6 +71,7 @@ def close_window(driver):
 
 
 def next_page(driver):
+    """Пробуем перейти на следующую страницу публикаций."""
     try:
         navigation = driver.find_element_by_id('gs_n')
     except NoSuchElementException:
@@ -87,6 +93,7 @@ def save_in_file(info):
 
 
 def get_all_pubs(soup):
+    """Получаем из HTML все публикации на текущей странице"""
     search_query = scholarly.search_scholar_soup(soup)
     pubs = []
     pub = get_next_pub(search_query)
@@ -106,22 +113,26 @@ def get_all_pubs(soup):
 
 
 def add_pubs_in_lib(driver):
+    """Добавляем все имеющиеся на странице публикации в Личную библиотеку"""
     rows = driver.find_elements_by_class_name('gs_or')
     rows.reverse()
     for row in rows:
         databox = row.find_element_by_class_name('gs_ri')
         lowerlinks = databox.find_element_by_class_name('gs_fl')
         star = lowerlinks.find_element_by_class_name('gs_or_sav')
-        time.sleep(0.5)
+        time.sleep(0.2)
         star.click()
         if not check_available_star(driver):
+            time.sleep(5)
             driver.delete_all_cookies()
             star.click()
             login(driver)
+            check_captcha(driver)
             star.click()
 
 
 def get_pubs_from_lib(driver):
+    """Получаем все публикации из библиотеки"""
     time.sleep(1)
     driver.execute_script("window.open('" + _LIBRARY + "','_blank');")
     global _current_page
@@ -146,7 +157,7 @@ def get_pubs_from_lib(driver):
     html = driver.page_source
     soup = BeautifulSoup(html, 'html.parser')
     text = soup.find('pre').contents[0]
-    bibs = bibtexparser.loads(text).entries
+    bibs = bibtexparser.loads(text, BibTexParser(common_strings=True)).entries
     bibs.reverse()
 
     for i in range(len(pubs)):
@@ -155,10 +166,16 @@ def get_pubs_from_lib(driver):
     driver.back()
     delete_pubs_in_lib(driver)
 
+    if check_captcha(driver):
+        time.sleep(5)
+        driver.get(_LIBRARY)
+        delete_pubs_in_lib(driver)
+
     return pubs
 
 
 def get_cites_pubs_on_pub(driver, pub):
+    """Получаем все публикации, в которых цитируется указанная"""
     driver.get(_CITES.format(pub.id_scholarcitedby))
     check_captcha(driver)
     main_pubs = []
@@ -174,6 +191,7 @@ def get_cites_pubs_on_pub(driver, pub):
 
 
 def get_pubs_with_cities(driver):
+    """Соединяем публикации с их цитирующими публикацями"""
     pubs = get_pubs_from_lib(driver)  # есть главные публикации, нужно получить статьи, которые их цитируют
     infos = []
     for pub in pubs:
@@ -190,17 +208,17 @@ def get_pubs_with_cities(driver):
 
 
 def delete_pubs_in_lib(driver):
-    check_captcha(driver)
+    """Удаляем публикации из библиотеки"""
     menu = driver.find_element_by_id('gs_ab_md')
     checkbox = menu.find_element_by_class_name('gs_in_cbj')
     checkbox.click()
 
     delete = menu.find_element_by_id('gs_res_ab_del')
     delete.click()
-    check_captcha(driver)
 
 
 def unchecked_citations(driver):
+    """Убираем галочку для показа цитат"""
     filters = driver.find_element_by_id('gs_bdy_sb_in')
     ul = filters.find_elements_by_class_name('gs_bdy_sb_sec')[2]
     li = ul.find_elements_by_tag_name('li')[1]
@@ -209,24 +227,47 @@ def unchecked_citations(driver):
 
 
 def check_available_star(driver):
+    """Проеряем, есть ли возможность добавить публикацию в библиотеку"""
     span = driver.find_element_by_id('gs_alrt_m')
-    print(span.text)
     return len(span.text) == 0
 
 
 def check_captcha(driver):
+    """Проверяем наличие капчи"""
     try:
-        WebDriverWait(driver, 3000).until(
-            EC.presence_of_element_located((By.ID, "gs_res_ccl"))
-        )
-    finally:
-        pass
+        captcha = driver.find_element_by_id('recaptcha')
+        playsound('Sound_05952.mp3')
+
+        try:
+            WebDriverWait(driver, 3000).until(
+                EC.presence_of_element_located((By.ID, "gs_res_ccl"))
+            )
+        finally:
+            pass
+        return True
+
+    except NoSuchElementException:
+        try:
+            captcha = driver.find_element_by_id('gs_captcha_ccl')
+            playsound('Sound_05952.mp3')
+
+            try:
+                WebDriverWait(driver, 3000).until(
+                    EC.presence_of_element_located((By.ID, "gs_res_ccl"))
+                )
+            finally:
+                pass
+            return True
+
+        except NoSuchElementException:
+            return False
 
 
 def login(driver):
+    """Входим в аккаунт после очистки куки"""
+    time.sleep(3)
     div = driver.find_element_by_class_name('WEQkZc')
     li = div.find_elements_by_tag_name('li')
-    print(len(li))
     li[0].click()
 
     time.sleep(3)
@@ -241,6 +282,31 @@ def login(driver):
     button.click()
 
 
+def set_page_in_20(driver):
+    """Устанавливаем количество отображаемых страниц на 20 штук"""
+    burger = driver.find_element_by_id('gs_hdr_mnu')
+    burger.click()
+
+    div = driver.find_element_by_id('gs_hdr_drw_in')
+    div = div.find_elements_by_tag_name('div')[1]
+    div = div.find_elements_by_tag_name('div')[3]
+    a = div.find_element_by_tag_name('a')
+    a.click()
+
+    span = driver.find_element_by_id('gs_num-bl')
+    if span.text != '20':
+        button = driver.find_element_by_id('gs_num-b')
+        button.click()
+
+        div = driver.find_element_by_id('gs_num-d')
+        div = div.find_element_by_tag_name('div')
+        a = div.find_elements_by_tag_name('a')[1]
+        a.click()
+
+    save_btn = driver.find_element_by_id('gs_settings_buttons').find_elements_by_tag_name('button')[0]
+    save_btn.click()
+
+
 if __name__ == '__main__':
     print('Начинаем работу')
     # query = input("Введите запрос: ")  # тут мы пишем наш запрос
@@ -250,6 +316,7 @@ if __name__ == '__main__':
     options = webdriver.ChromeOptions()
     options.add_argument('user-data-dir=C:\\Users\\ScRiB\\AppData\\Local\\Google\\Chrome\\User Data 2')
     options.add_argument("--profile-directory=Profile 4")
+
     driver = webdriver.Chrome(executable_path=r'C:\\Users\\ScRiB\\Desktop\\Firefox\\chromedriver.exe', options=options)
 
     url = "https://scholar.google.com/scholar?lookup=0&hl=en&q=" + str(query)
@@ -258,13 +325,17 @@ if __name__ == '__main__':
 
     check_captcha(driver)
 
-    unchecked_citations(driver)
+    set_page_in_20(driver)
 
-    try:
-        add_pubs_in_lib(driver)
-        get_pubs_with_cities(driver)
-    except NoSuchElementException:
-        print('Что-то пошло не так...')
+    unchecked_citations(driver)
+    add_pubs_in_lib(driver)
+    get_pubs_with_cities(driver)
+
+    # try:
+    #     add_pubs_in_lib(driver)
+    #     get_pubs_with_cities(driver)
+    # except NoSuchElementException:
+    #     print('Что-то пошло не так...')
 
     print('Программа завершила работу')
     # driver.quit()

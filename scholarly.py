@@ -105,8 +105,9 @@ def search_scholar_soup(soup):
         for row in soup.find_all('div', 'gs_or'):
             yield Publication(row, 'scholar')
         if soup.find(class_='gs_ico gs_ico_nav_next'):
-            url = soup.find(class_='gs_ico gs_ico_nav_next').parent['href']
-            soup = _get_soup(_HOST + url)
+            pass
+        #     url = soup.find(class_='gs_ico gs_ico_nav_next').parent['href']
+        #     soup = _get_soup(_HOST + url)
         else:
             break
 
