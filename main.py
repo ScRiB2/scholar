@@ -112,6 +112,25 @@ def get_all_pubs(soup):
     return pubs
 
 
+def refresh_library(driver):
+    login(driver)
+    time.sleep(3)
+    check_captcha(driver)
+
+    driver.execute_script("window.open('" + _LIBRARY + "','_blank');")
+    global _current_page
+    _current_page = _current_page + 1
+    driver.switch_to.window(driver.window_handles[_current_page])
+
+    check_captcha(driver)
+
+    delete_pubs_in_lib(driver)
+
+    close_window(driver)
+    driver.refresh()
+    add_pubs_in_lib(driver)
+
+
 def add_pubs_in_lib(driver):
     """Добавляем все имеющиеся на странице публикации в Личную библиотеку"""
     rows = driver.find_elements_by_class_name('gs_or')
@@ -120,15 +139,13 @@ def add_pubs_in_lib(driver):
         databox = row.find_element_by_class_name('gs_ri')
         lowerlinks = databox.find_element_by_class_name('gs_fl')
         star = lowerlinks.find_element_by_class_name('gs_or_sav')
-        time.sleep(0.2)
+        time.sleep(0.3)
         star.click()
         if not check_available_star(driver):
-            time.sleep(5)
             driver.delete_all_cookies()
             star.click()
-            login(driver)
-            check_captcha(driver)
-            star.click()
+            refresh_library(driver)
+            break
 
 
 def get_pubs_from_lib(driver):
@@ -144,19 +161,24 @@ def get_pubs_from_lib(driver):
     html = driver.page_source
     html = html.replace(u'\xa0', ' ')
     soup = BeautifulSoup(html, 'html.parser')
+
     pubs = get_all_pubs(soup)
 
     menu = driver.find_element_by_id('gs_ab_md')
     checkbox = menu.find_element_by_class_name('gs_in_cbj')
     checkbox.click()
+
     downl = driver.find_element_by_id('gs_res_ab_exp-b')
     downl.click()
+
     bib = driver.find_element_by_id('gs_res_ab_exp-d')
     a = bib.find_elements_by_class_name('gs_md_li')[0]
     a.click()
+
     html = driver.page_source
     soup = BeautifulSoup(html, 'html.parser')
     text = soup.find('pre').contents[0]
+
     bibs = bibtexparser.loads(text, BibTexParser(common_strings=True)).entries
     bibs.reverse()
 
@@ -209,12 +231,15 @@ def get_pubs_with_cities(driver):
 
 def delete_pubs_in_lib(driver):
     """Удаляем публикации из библиотеки"""
-    menu = driver.find_element_by_id('gs_ab_md')
-    checkbox = menu.find_element_by_class_name('gs_in_cbj')
-    checkbox.click()
+    try:
+        menu = driver.find_element_by_id('gs_ab_md')
+        checkbox = menu.find_element_by_class_name('gs_in_cbj')
+        checkbox.click()
 
-    delete = menu.find_element_by_id('gs_res_ab_del')
-    delete.click()
+        delete = menu.find_element_by_id('gs_res_ab_del')
+        delete.click()
+    except NoSuchElementException:
+        close_window(driver)
 
 
 def unchecked_citations(driver):
@@ -227,7 +252,7 @@ def unchecked_citations(driver):
 
 
 def check_available_star(driver):
-    """Проеряем, есть ли возможность добавить публикацию в библиотеку"""
+    """Проверяем, есть ли возможность добавить публикацию в библиотеку"""
     span = driver.find_element_by_id('gs_alrt_m')
     return len(span.text) == 0
 
@@ -240,10 +265,11 @@ def check_captcha(driver):
 
         try:
             WebDriverWait(driver, 3000).until(
-                EC.presence_of_element_located((By.ID, "gs_res_ccl"))
+                EC.presence_of_element_located((By.XPATH, "//a[@href='//www.google.com/']"))
             )
         finally:
             pass
+
         return True
 
     except NoSuchElementException:
@@ -283,7 +309,7 @@ def login(driver):
 
 
 def set_page_in_20(driver):
-    """Устанавливаем количество отображаемых страниц на 20 штук"""
+    """Устанавливаем количество отображаемых страниц в 20 штук"""
     burger = driver.find_element_by_id('gs_hdr_mnu')
     burger.click()
 
@@ -314,10 +340,10 @@ if __name__ == '__main__':
     print("Запрос принят. Начинаем обработку")
 
     options = webdriver.ChromeOptions()
-    options.add_argument('user-data-dir=C:\\Users\\ScRiB\\AppData\\Local\\Google\\Chrome\\User Data 2')
-    options.add_argument("--profile-directory=Profile 4")
+    options.add_argument('user-data-dir=C:\\Users\\ScRiB\\AppData\\Local\\Google\\Chrome\\User Data 3')
+    options.add_argument("--profile-directory=Profile 5")
 
-    driver = webdriver.Chrome(executable_path=r'C:\\Users\\ScRiB\\Desktop\\Firefox\\chromedriver.exe', options=options)
+    driver = webdriver.Chrome(executable_path=r'C:\\Users\\ScRiB\\Desktop\\GChrome\\chromedriver.exe', options=options)
 
     url = "https://scholar.google.com/scholar?lookup=0&hl=en&q=" + str(query)
 
@@ -328,6 +354,7 @@ if __name__ == '__main__':
     set_page_in_20(driver)
 
     unchecked_citations(driver)
+
     add_pubs_in_lib(driver)
     get_pubs_with_cities(driver)
 
