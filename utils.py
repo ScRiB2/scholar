@@ -18,8 +18,8 @@ def check_available_star(driver):
     return len(span.text) == 0
 
 
-def save_in_file(info):
-    with open('C:\\scholar.json', 'w') as f:
+def save_in_file(file_name, info):
+    with open(file_namee, 'w') as f:
         json.dump(info, f, indent=4)
 
 

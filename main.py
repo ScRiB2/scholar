@@ -27,6 +27,8 @@ _PATH_TO_PROFILE = 'C:\\Users\\ScRiB\\AppData\\Local\\Google\\Chrome\\User Data 
 _PROFILE = 'Profile 5'
 _PATH_TO_DRIVER = 'C:\\Users\\ScRiB\\Desktop\\GChrome\\chromedriver.exe'
 
+_FILENAME = 'C:\\scholar.json'
+
 _current_page = 0
 
 
@@ -209,7 +211,7 @@ def get_cites_pubs_on_pub(driver, pub, infos):
         pub.cities = cities
         info = get_all_info_from_pub(pub)
         infos.append(info)
-        utils.save_in_file(infos)
+        utils.save_in_file(_FILENAME, infos)
         if not next_page(driver):
             break
     return main_pubs
@@ -225,7 +227,7 @@ def get_pubs_with_cities(driver):
             continue
         info = get_all_info_from_pub(pub)
         infos.append(info)
-        utils.save_in_file(infos)
+        utils.save_in_file(_FILENAME, infos)
 
 
 def delete_pubs_in_lib(driver):
