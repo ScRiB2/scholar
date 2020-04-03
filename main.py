@@ -23,6 +23,10 @@ _CITES = 'https://scholar.google.com/scholar?cites={0}&as_sdt=2005&sciodt=0,5&hl
 _EMAIL = 'swehgadsfgae@gmail.com'
 _PASSWORD = 'Sasha1999sas!'
 
+_PATH_TO_PROFILE = 'C:\\Users\\ScRiB\\AppData\\Local\\Google\\Chrome\\User Data 3'
+_PROFILE = 'Profile 5'
+_PATH_TO_DRIVER = 'C:\\Users\\ScRiB\\Desktop\\GChrome\\chromedriver.exe'
+
 _current_page = 0
 
 
@@ -122,7 +126,8 @@ def refresh_library(driver):
     open_window(driver, _LIBRARY)
     check_captcha(driver)
 
-    delete_pubs_in_lib(driver)
+    if delete_pubs_in_lib(driver):
+        close_window(driver)
 
     driver.refresh()
     add_pubs_in_lib(driver)
@@ -217,6 +222,7 @@ def get_pubs_with_cities(driver):
     for pub in pubs:
         if pub.citedby != 0:
             get_cites_pubs_on_pub(driver, pub, infos)
+            continue
         info = get_all_info_from_pub(pub)
         infos.append(info)
         utils.save_in_file(infos)
@@ -336,10 +342,10 @@ if __name__ == '__main__':
     print("Запрос принят. Начинаем обработку")
 
     options = webdriver.ChromeOptions()
-    options.add_argument('user-data-dir=C:\\Users\\ScRiB\\AppData\\Local\\Google\\Chrome\\User Data 3')
-    options.add_argument("--profile-directory=Profile 5")
+    options.add_argument('user-data-dir=' + _PATH_TO_PROFILE)
+    options.add_argument("--profile-directory=" + _PROFILE)
 
-    driver = webdriver.Chrome(executable_path=r'C:\\Users\\ScRiB\\Desktop\\GChrome\\chromedriver.exe', options=options)
+    driver = webdriver.Chrome(executable_path=r'{0}'.format(_PATH_TO_DRIVER), options=options)
 
     url = _MAIN.format(str(query))
 
