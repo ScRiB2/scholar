@@ -201,6 +201,7 @@ def get_cites_pubs_on_pub(driver, pub, infos):
     main_pubs = []
     cities = []
     utils.unchecked_citations(driver)
+    index = -1
     while True:
         add_pubs_in_lib(driver)
         pubs = get_pubs_from_lib(driver)
@@ -208,9 +209,14 @@ def get_cites_pubs_on_pub(driver, pub, infos):
         for citi in pubs:
             info_citi = get_all_info_from_pub(citi)
             cities.append(info_citi)
-        pub.cities = cities
-        info = get_all_info_from_pub(pub)
-        infos.append(info)
+        if index == -1:
+            info = get_all_info_from_pub(pub)
+            info['cities'] = cities
+            infos.append(info)
+            index = len(infos) - 1
+        else:
+            infos[index]['cities'] = cities
+
         utils.save_in_file(_FILENAME, infos)
         if not next_page(driver):
             break
@@ -314,22 +320,6 @@ def login(driver):
 
     close_window(driver)
 
-    # time.sleep(3)
-    # div = driver.find_element_by_class_name('WEQkZc')
-    # li = div.find_elements_by_tag_name('li')
-    # li[0].click()
-    #
-    # time.sleep(2)
-    #
-    # div = driver.find_element_by_class_name('Xb9hP')
-    # input = div.find_element_by_tag_name('input')
-    # input.send_keys(_PASSWORD)
-    #
-    # time.sleep(1)
-    #
-    # button = driver.find_element_by_class_name('qhFLie').find_element_by_tag_name('div')
-    # button.click()
-
 
 def clear_lib(driver):
     open_window(driver, _LIBRARY)
@@ -351,7 +341,7 @@ if __name__ == '__main__':
 
     url = _MAIN.format(str(query))
 
-    login(driver)
+    # login(driver)
 
     driver.get(url)
 
@@ -366,11 +356,5 @@ if __name__ == '__main__':
     add_pubs_in_lib(driver)
     get_pubs_with_cities(driver)
 
-    # try:
-    #     add_pubs_in_lib(driver)
-    #     get_pubs_with_cities(driver)
-    # except NoSuchElementException:
-    #     print('Что-то пошло не так...')
-
     print('Программа завершила работу')
-    # driver.quit()
+    driver.quit()

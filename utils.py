@@ -19,7 +19,7 @@ def check_available_star(driver):
 
 
 def save_in_file(file_name, info):
-    with open(file_namee, 'w') as f:
+    with open(file_name, 'w') as f:
         json.dump(info, f, indent=4)
 
 
