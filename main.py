@@ -163,46 +163,31 @@ def get_pubs_from_lib(driver):
     return pubs
 
 
-def get_cites_pubs_on_pub(driver, index, i, is_old=False):
+def get_cites_pubs_on_pub(driver, pub, main_index):
     """Получаем все публикации, в которых цитируется указанная"""
-    if is_old:
-        second_page = saver.read_file(_FILENAME)['research']['secondPage']
-        open_window(driver, second_page)
-        if not next_page(driver):
-            return
-    else:
-        driver.get(_CITES.format(index['id']))
+    driver.get(_CITES.format(pub.id_scholarcitedby))
     check_captcha(driver)
-    # utils.unchecked_citations(driver)
+    utils.unchecked_citations(driver)
     while True:
         add_pubs_in_lib(driver)
         pubs = get_pubs_from_lib(driver)
         close_window(driver)
         for citi in pubs:
-            saver.save(_FILENAME, citi, index['index'])
-        saver.update_research(driver, '', i)
+            saver.save(_FILENAME, citi, main_index)
         if not next_page(driver):
             break
 
 
-def get_pubs_with_cities(driver, is_old, query):
+def get_pubs_with_cities(driver):
     """Соединяем публикации с их цитирующими публикацями"""
     indexes = []
-    start_index = 0
-    if is_old:
-        is_old = False
-        research = saver.read_file(_FILENAME)['research']
-        start_index = research['lastIndex']
-        indexes = research['indexes']
-    else:
-        pubs = get_pubs_from_lib(driver)  # есть главные публикации, нужно получить статьи, которые их цитируют
-        for pub in pubs:
-            indexes.append({'index': saver.save(_FILENAME, pub), 'id': 0 if pub.citedby == 0 else pub.id_scholarcitedby})
-        saver.update_research(driver, query=query, indexes=indexes)
+    pubs = get_pubs_from_lib(driver)  # есть главные публикации, нужно получить статьи, которые их цитируют
+    for pub in pubs:
+        indexes.append(saver.save(_FILENAME, pub))
 
-    for i in range(start_index, len(indexes)):
-        if indexes[i]['id'] != 0:
-            get_cites_pubs_on_pub(driver, indexes[i], i, is_old)
+    for i in range(0, len(indexes)):
+        if pubs[i].citedby != 0:
+            get_cites_pubs_on_pub(driver, pubs[i], indexes[i])
             continue
 
 
@@ -314,28 +299,12 @@ def get_driver():
 
 
 if __name__ == '__main__':
-    while True:
-        print('Выберите режим работы:')
-        print('1. Начать заново')
-        print('2. Продолжить выполнение с предыдщего места')
-        mode = int(input())
-        if mode == 1 or mode == 2:
-            break
-        else:
-            print('Введите корректное значение')
     print('Начинаем работу')
-    query = ''
-    if mode == 1:
-        # query = input("Введите запрос: ")  # тут мы пишем наш запрос
-        query = 'Информационная безопасность'
-        print("Запрос принят. Начинаем обработку")
-        saver.init_file(_FILENAME)
-        url = _MAIN.format(str(query))
-    else:
-        research = saver.read_file(_FILENAME)['research']
-        url = _MAIN.format(str(research['query']))
-        if research['lastIndex'] == -1:
-            mode = 1
+    # query = input("Введите запрос: ")  # тут мы пишем наш запрос
+    query = 'Информационная безопасность'
+    print("Запрос принят. Начинаем обработку")
+    saver.init_file(_FILENAME)
+    url = _MAIN.format(str(query))
 
     driver = get_driver()
     driver.get(url)
@@ -355,9 +324,8 @@ if __name__ == '__main__':
     clear_lib(driver)
 
     utils.unchecked_citations(driver)
-    if mode == 1:
-        add_pubs_in_lib(driver)
-    get_pubs_with_cities(driver, mode == 2, query)
+    add_pubs_in_lib(driver)
+    get_pubs_with_cities(driver)
 
     # print('Программа завершила работу')
     # driver.quit()

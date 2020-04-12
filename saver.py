@@ -7,8 +7,6 @@ _index = 1
 _FILE_NAME = ''
 
 _DATA = {}
-_RESEARCH = {}
-_JSON = {}
 
 
 class TypeOfRelations(enum.Enum):
@@ -35,25 +33,17 @@ def init_file(file_name):
     if _FILE_NAME == '':
         _init_filename(file_name)
     data = {
-        'research': {
-            'query': '',
-            'secondPage': '',
-            'indexes': [],
-            'lastIndex': -2
+        'Nodes': {
+            'Publication': [],
+            'Author': [],
+            'Source': [],
+            'Publishing_house': [],
         },
-        'data': {
-            'Nodes': {
-                'Publication': [],
-                'Author': [],
-                'Source': [],
-                'Publishing_house': [],
-            },
-            'Relations': {
-                'Wrote': [],
-                'Refers': [],
-                'Published_by': [],
-                'Quotes': [],
-            }
+        'Relations': {
+            'Wrote': [],
+            'Refers': [],
+            'Published_by': [],
+            'Quotes': [],
         }
     }
 
@@ -166,9 +156,6 @@ def _add_relation(start, end, type_of_relation):
         'start': start,
         'end': end
     }
-    for relation in relations:
-        if relation['start'] == rel['start'] and relation['end'] == rel['end']:
-            return
     relations.append(rel)
 
 
@@ -179,22 +166,7 @@ def _init_filename(file_name):
 
 def _set_data(data):
     global _DATA
-    global _RESEARCH
-    global _JSON
-    _RESEARCH = data['research']
-    _DATA = data['data']
-    _JSON = data
-
-
-def update_research(driver, query='', index=-1, indexes=None):
-    if _RESEARCH['query'] == '' and query != '':
-        _RESEARCH['query'] = query
-    if indexes is not None:
-        _RESEARCH['indexes'] = indexes
-    driver.switch_to.window(driver.window_handles[1])
-    _RESEARCH['secondPage'] = driver.current_url
-    _RESEARCH['lastIndex'] = index
-    save_in_file(_JSON)
+    _DATA = data
 
 
 def save(file_name, pub, main_index=None):
@@ -202,8 +174,8 @@ def save(file_name, pub, main_index=None):
         _init_filename(file_name)
     _set_data(read_file(_FILE_NAME))
     pub_index = _add_pub_in_file(pub)
-    save_in_file(_JSON)
+    save_in_file(_DATA)
     if main_index is None:
         return pub_index
     _add_relation(main_index, pub_index, TypeOfRelations.QUOTES)
-    save_in_file(_JSON)
+    save_in_file(_DATA)
