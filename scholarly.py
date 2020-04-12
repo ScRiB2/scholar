@@ -140,8 +140,9 @@ class Publication(object):
         self.bib = dict()
         self.source = pubtype
         if self.source == 'citations':
-            self.bib['title'] = __data.find('a', class_='gsc_a_at').text
-            self.id_citations = re.findall(_CITATIONPUBRE, __data.find('a', class_='gsc_a_at')['data-href'])[0]
+            a = __data.find('a', class_='gsc_a_at')
+            self.bib['title'] = a.text
+            self.id_citations = re.findall(_CITATIONPUBRE, a['data-href'])[0]
             citedby = __data.find(class_='gsc_a_ac')
             if citedby and not (citedby.text.isspace() or citedby.text == ''):
                 self.citedby = int(citedby.text)
@@ -156,8 +157,14 @@ class Publication(object):
             elif title.find('span', class_='gs_ctc'):  # A book or PDF
                 title.span.extract()
             self.bib['title'] = title.text.strip()
+
             if title.find('a'):
-                self.bib['url'] = title.find('a')['href']
+                a = title.find('a')
+                self.bib['url'] = a['href']
+                data_clk = a['data-clk']
+                data_clk = data_clk[data_clk.find('&d=') + 3:]
+                temp = data_clk.split('&')
+                self.id = int(temp[0])
             authorinfo = databox.find('div', class_='gs_a')
             self.bib['author'] = ' and '.join([i.strip() for i in authorinfo.text.split(' - ')[0].split(',')])
             if databox.find('div', class_='gs_rs'):

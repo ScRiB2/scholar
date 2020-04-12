@@ -1,9 +1,10 @@
+import json
 import time
-from pprint import pprint
 
 import bibtexparser
 from bibtexparser.bparser import BibTexParser
 from bs4 import BeautifulSoup
+from playsound import playsound
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
@@ -11,12 +12,11 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
-from playsound import playsound
-
+import saver
 import scholarly
 import utils
 
-_MAIN = "https://scholar.google.com/scholar?lookup=0&hl=en&q={0}"
+_MAIN = "https://scholar.google.com/scholar?&lookup=0&hl=en&q={0}"
 _LIBRARY = 'https://scholar.google.com/scholar?scilib=1&hl=en&as_sdt=0,5'
 _CITES = 'https://scholar.google.com/scholar?cites={0}&as_sdt=2005&sciodt=0,5&hl=en'
 
@@ -30,37 +30,6 @@ _PATH_TO_DRIVER = 'C:\\Users\\ScRiB\\Desktop\\GChrome\\chromedriver.exe'
 _FILENAME = 'C:\\scholar.json'
 
 _current_page = 0
-
-
-def get_all_info_from_pub(pub):
-    """Получаем из публикации нужную на информацию"""
-    bib = pub.bib
-    title = bib['title']
-    abstract = bib['abstract']
-    abstract = abstract.replace(u'\xa0', '')
-    citedby = pub.citedby
-    authors = bib['author']
-    publisher = 'none'
-    if 'publisher' in bib:
-        publisher = bib['publisher']
-    year = -1
-    if 'year' in bib:
-        year = int(bib['year'])
-    url = bib['url']
-    info = {
-        'title': title,
-        'abstract': abstract,
-        'citedby': citedby,
-        'authors': authors,
-        'publisher': publisher,
-        'year': year,
-        'url': url
-    }
-
-    if hasattr(pub, 'cities'):
-        info['cities'] = pub.cities
-
-    return info
 
 
 def open_window(driver, page):
@@ -194,46 +163,47 @@ def get_pubs_from_lib(driver):
     return pubs
 
 
-def get_cites_pubs_on_pub(driver, pub, infos):
+def get_cites_pubs_on_pub(driver, index, i, is_old=False):
     """Получаем все публикации, в которых цитируется указанная"""
-    driver.get(_CITES.format(pub.id_scholarcitedby))
+    if is_old:
+        second_page = saver.read_file(_FILENAME)['research']['secondPage']
+        open_window(driver, second_page)
+        if not next_page(driver):
+            return
+    else:
+        driver.get(_CITES.format(index['id']))
     check_captcha(driver)
-    main_pubs = []
-    cities = []
-    utils.unchecked_citations(driver)
-    index = -1
+    # utils.unchecked_citations(driver)
     while True:
         add_pubs_in_lib(driver)
         pubs = get_pubs_from_lib(driver)
         close_window(driver)
         for citi in pubs:
-            info_citi = get_all_info_from_pub(citi)
-            cities.append(info_citi)
-        if index == -1:
-            info = get_all_info_from_pub(pub)
-            info['cities'] = cities
-            infos.append(info)
-            index = len(infos) - 1
-        else:
-            infos[index]['cities'] = cities
-
-        utils.save_in_file(_FILENAME, infos)
+            saver.save(_FILENAME, citi, index['index'])
+        saver.update_research(driver, '', i)
         if not next_page(driver):
             break
-    return main_pubs
 
 
-def get_pubs_with_cities(driver):
+def get_pubs_with_cities(driver, is_old, query):
     """Соединяем публикации с их цитирующими публикацями"""
-    pubs = get_pubs_from_lib(driver)  # есть главные публикации, нужно получить статьи, которые их цитируют
-    infos = []
-    for pub in pubs:
-        if pub.citedby != 0:
-            get_cites_pubs_on_pub(driver, pub, infos)
+    indexes = []
+    start_index = 0
+    if is_old:
+        is_old = False
+        research = saver.read_file(_FILENAME)['research']
+        start_index = research['lastIndex']
+        indexes = research['indexes']
+    else:
+        pubs = get_pubs_from_lib(driver)  # есть главные публикации, нужно получить статьи, которые их цитируют
+        for pub in pubs:
+            indexes.append({'index': saver.save(_FILENAME, pub), 'id': 0 if pub.citedby == 0 else pub.id_scholarcitedby})
+        saver.update_research(driver, query=query, indexes=indexes)
+
+    for i in range(start_index, len(indexes)):
+        if indexes[i]['id'] != 0:
+            get_cites_pubs_on_pub(driver, indexes[i], i, is_old)
             continue
-        info = get_all_info_from_pub(pub)
-        infos.append(info)
-        utils.save_in_file(_FILENAME, infos)
 
 
 def delete_pubs_in_lib(driver):
@@ -249,6 +219,9 @@ def delete_pubs_in_lib(driver):
 
         delete = menu.find_element_by_id('gs_res_ab_del')
         delete.click()
+        if check_captcha(driver):
+            driver.get(_LIBRARY)
+            delete_pubs_in_lib(driver)
         return True
     except NoSuchElementException:
         close_window(driver)
@@ -293,14 +266,16 @@ def login(driver):
     """Входим в аккаунт после очистки куки"""
     open_window(driver, "some")
     driver.get("chrome://settings/clearBrowserData")
-    time.sleep(1)
+    time.sleep(2)
     driver.find_element(By.XPATH, "//settings-ui").send_keys(Keys.ENTER)
+
+    time.sleep(3)
 
     driver.get(url)
 
     driver.find_element_by_id('gs_hdr_act_s').click()
 
-    time.sleep(2)
+    time.sleep(1)
 
     driver.find_element_by_id('identifierId').send_keys(_EMAIL)
     driver.find_element_by_id('identifierNext').click()
@@ -327,23 +302,51 @@ def clear_lib(driver):
         close_window(driver)
 
 
-if __name__ == '__main__':
-    print('Начинаем работу')
-    # query = input("Введите запрос: ")  # тут мы пишем наш запрос
-    query = 'Perception of physical stability and center of mass of 3D objects'
-    print("Запрос принят. Начинаем обработку")
-
+def get_driver():
     options = webdriver.ChromeOptions()
     options.add_argument('user-data-dir=' + _PATH_TO_PROFILE)
     options.add_argument("--profile-directory=" + _PROFILE)
+    options.add_argument("--start-maximized")
+    # options.add_argument("--proxy-server=85.208.84.138:52332")
 
     driver = webdriver.Chrome(executable_path=r'{0}'.format(_PATH_TO_DRIVER), options=options)
+    return driver
 
-    url = _MAIN.format(str(query))
 
-    # login(driver)
+if __name__ == '__main__':
+    while True:
+        print('Выберите режим работы:')
+        print('1. Начать заново')
+        print('2. Продолжить выполнение с предыдщего места')
+        mode = int(input())
+        if mode == 1 or mode == 2:
+            break
+        else:
+            print('Введите корректное значение')
+    print('Начинаем работу')
+    query = ''
+    if mode == 1:
+        # query = input("Введите запрос: ")  # тут мы пишем наш запрос
+        query = 'Информационная безопасность'
+        print("Запрос принят. Начинаем обработку")
+        saver.init_file(_FILENAME)
+        url = _MAIN.format(str(query))
+    else:
+        research = saver.read_file(_FILENAME)['research']
+        url = _MAIN.format(str(research['query']))
+        if research['lastIndex'] == -1:
+            mode = 1
 
+    driver = get_driver()
     driver.get(url)
+
+    check_captcha(driver)
+
+    try:
+        driver.find_element_by_id('gs_hdr_act_s')
+        login(driver)
+    except NoSuchElementException:
+        pass
 
     check_captcha(driver)
 
@@ -352,9 +355,9 @@ if __name__ == '__main__':
     clear_lib(driver)
 
     utils.unchecked_citations(driver)
+    if mode == 1:
+        add_pubs_in_lib(driver)
+    get_pubs_with_cities(driver, mode == 2, query)
 
-    add_pubs_in_lib(driver)
-    get_pubs_with_cities(driver)
-
-    print('Программа завершила работу')
-    driver.quit()
+    # print('Программа завершила работу')
+    # driver.quit()

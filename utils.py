@@ -1,7 +1,5 @@
 """utils.py"""
 
-import json
-
 
 def get_next_pub(query):
     """Получаем следующий объект из генератора"""
@@ -16,11 +14,6 @@ def check_available_star(driver):
     """Проверяем, есть ли возможность добавить публикацию в библиотеку"""
     span = driver.find_element_by_id('gs_alrt_m')
     return len(span.text) == 0
-
-
-def save_in_file(file_name, info):
-    with open(file_name, 'w') as f:
-        json.dump(info, f, indent=4)
 
 
 def set_page_in_20(driver):
