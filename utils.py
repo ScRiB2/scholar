@@ -13,7 +13,7 @@ def get_next_pub(query):
 def check_available_star(driver):
     """Проверяем, есть ли возможность добавить публикацию в библиотеку"""
     span = driver.find_element_by_id('gs_alrt_m')
-    return len(span.text) == 0
+    return span.text != "The system can't perform the operation now. Try again later."
 
 
 def set_page_in_20(driver):

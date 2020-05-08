@@ -19,6 +19,7 @@ class TypeOfRelations(enum.Enum):
         self.title = title
 
 
+
 def save_in_file(info):
     with open(_FILE_NAME, 'w', encoding='utf-8') as f:
         json.dump(info, f, indent=4, ensure_ascii=False)
@@ -27,27 +28,6 @@ def save_in_file(info):
 def read_file(file_name):
     with open(file_name, 'r', encoding='utf-8') as f:
         return json.load(f)
-
-
-def init_file(file_name):
-    if _FILE_NAME == '':
-        _init_filename(file_name)
-    data = {
-        'Nodes': {
-            'Publication': [],
-            'Author': [],
-            'Source': [],
-            'Publishing_house': [],
-        },
-        'Relations': {
-            'Wrote': [],
-            'Refers': [],
-            'Published_by': [],
-            'Quotes': [],
-        }
-    }
-
-    save_in_file(data)
 
 
 def _get_authors_from_pub(pub):
@@ -152,11 +132,33 @@ def _add_source_in_file(pub, pub_index):
 
 def _add_relation(start, end, type_of_relation):
     relations = _DATA['Relations'][type_of_relation.title]
+
     rel = {
         'start': start,
         'end': end
     }
     relations.append(rel)
+
+
+def init_file(file_name):
+    if _FILE_NAME == '':
+        _init_filename(file_name)
+    data = {
+        'Nodes': {
+            'Publication': [],
+            'Author': [],
+            'Source': [],
+            'Publishing_house': [],
+        },
+        'Relations': {
+            'Wrote': [],
+            'Refers': [],
+            'Published_by': [],
+            'Quotes': [],
+        }
+    }
+
+    save_in_file(data)
 
 
 def _init_filename(file_name):

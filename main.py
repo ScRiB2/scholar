@@ -20,8 +20,8 @@ _MAIN = "https://scholar.google.com/scholar?&lookup=0&hl=en&q={0}"
 _LIBRARY = 'https://scholar.google.com/scholar?scilib=1&hl=en&as_sdt=0,5'
 _CITES = 'https://scholar.google.com/scholar?cites={0}&as_sdt=2005&sciodt=0,5&hl=en'
 
-_EMAIL = 'swehgadsfgae@gmail.com'
-_PASSWORD = 'Sasha1999sas!'
+_EMAIL = ''
+_PASSWORD = ''
 
 _PATH_TO_PROFILE = 'C:\\Users\\ScRiB\\AppData\\Local\\Google\\Chrome\\User Data 3'
 _PROFILE = 'Profile 5'
