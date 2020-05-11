@@ -112,7 +112,7 @@ def add_pubs_in_lib(driver):
         databox = row.find_element_by_class_name('gs_ri')
         lowerlinks = databox.find_element_by_class_name('gs_fl')
         star = lowerlinks.find_element_by_class_name('gs_or_sav')
-        time.sleep(0.3)
+        time.sleep(0.4)
         star.click()
         if not utils.check_available_star(driver):
             refresh_library(driver)
@@ -168,13 +168,15 @@ def get_cites_pubs_on_pub(driver, pub, main_index):
     driver.get(_CITES.format(pub.id_scholarcitedby))
     check_captcha(driver)
     utils.unchecked_citations(driver)
+    i = 0
     while True:
+        i = i + 1
         add_pubs_in_lib(driver)
         pubs = get_pubs_from_lib(driver)
         close_window(driver)
         for citi in pubs:
             saver.save(_FILENAME, citi, main_index)
-        if not next_page(driver):
+        if not next_page(driver) or i > 4:
             break
 
 
@@ -324,8 +326,14 @@ if __name__ == '__main__':
     clear_lib(driver)
 
     utils.unchecked_citations(driver)
-    add_pubs_in_lib(driver)
-    get_pubs_with_cities(driver)
+    i = 0
+    while True:
+        i = i + 1
+        add_pubs_in_lib(driver)
+        get_pubs_with_cities(driver)
+        close_window(driver)
+        if not next_page(driver) or i > 4:
+            break
 
     # print('Программа завершила работу')
     # driver.quit()
