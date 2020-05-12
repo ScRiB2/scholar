@@ -1,4 +1,3 @@
-import json
 import time
 
 import bibtexparser
@@ -303,7 +302,7 @@ def get_driver():
 if __name__ == '__main__':
     print('Начинаем работу')
     # query = input("Введите запрос: ")  # тут мы пишем наш запрос
-    query = 'Информационная безопасность'
+    query = 'компьютерная безопасность'
     print("Запрос принят. Начинаем обработку")
     saver.init_file(_FILENAME)
     url = _MAIN.format(str(query))
@@ -311,7 +310,6 @@ if __name__ == '__main__':
     driver = get_driver()
     driver.get(url)
 
-    check_captcha(driver)
 
     try:
         driver.find_element_by_id('gs_hdr_act_s')

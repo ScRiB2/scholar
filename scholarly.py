@@ -161,10 +161,13 @@ class Publication(object):
             if title.find('a'):
                 a = title.find('a')
                 self.bib['url'] = a['href']
-                data_clk = a['data-clk']
-                data_clk = data_clk[data_clk.find('&d=') + 3:]
-                temp = data_clk.split('&')
-                self.id = int(temp[0])
+                if 'data-clk' in a:
+                    data_clk = a['data-clk']
+                    data_clk = data_clk[data_clk.find('&d=') + 3:]
+                    temp = data_clk.split('&')
+                    self.id = int(temp[0])
+                else:
+                    self.id = -1
             authorinfo = databox.find('div', class_='gs_a')
             self.bib['author'] = ' and '.join([i.strip() for i in authorinfo.text.split(' - ')[0].split(',')])
             if databox.find('div', class_='gs_rs'):
