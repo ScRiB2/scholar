@@ -29,7 +29,7 @@ _CONTINUE_INFO = {
     "main_page": 0,  # номер страницы главных публикаций
     "cities_index": 0,  # индекс публикации в списке главных публикаций
     "citations_page": 1,  # номер страницы цитируемых публикаций
-    "last_index_in_result": 1 # следующий индекс в файле result
+    "last_index_in_result": 1  # следующий индекс в файле result
 }
 
 
@@ -287,15 +287,19 @@ if __name__ == '__main__':
                     break
 
         i = page - 1
-        while True:
-            i = i + 1
-            _CONTINUE_INFO['main_page'] = i
+        try:
+            while True:
+                i = i + 1
+                _CONTINUE_INFO['main_page'] = i
+                saver.save_in_file(_CONTINUE_INFO, _CONTINUE_FILE)
+                add_pubs_in_lib(driver)
+                get_pubs_with_cities(driver)
+                close_window(driver)
+                if not utils.next_page(driver):
+                    break
+        except Exception as e:
+            _CONTINUE_INFO['last_index_in_result'] = saver.get_last_index()
             saver.save_in_file(_CONTINUE_INFO, _CONTINUE_FILE)
-            add_pubs_in_lib(driver)
-            get_pubs_with_cities(driver)
-            close_window(driver)
-            if not utils.next_page(driver):
-                break
 
         driver.quit()
     print('Программа завершила работу')
