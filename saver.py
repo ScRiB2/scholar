@@ -1,7 +1,7 @@
 """saver.py"""
 
-import json
 import enum
+import json
 
 _index = 1
 _FILE_NAME = ''
@@ -19,9 +19,8 @@ class TypeOfRelations(enum.Enum):
         self.title = title
 
 
-
-def save_in_file(info):
-    with open(_FILE_NAME, 'w', encoding='utf-8') as f:
+def save_in_file(info, file_name):
+    with open(file_name, 'w', encoding='utf-8') as f:
         json.dump(info, f, indent=4, ensure_ascii=False)
 
 
@@ -158,7 +157,7 @@ def init_file(file_name):
         }
     }
 
-    save_in_file(data)
+    save_in_file(data, _FILE_NAME)
 
 
 def _init_filename(file_name):
@@ -171,13 +170,22 @@ def _set_data(data):
     _DATA = data
 
 
+def get_last_index():
+    return _index
+
+
+def set_index(index):
+    global _index
+    _index = index
+
+
 def save(file_name, pub, main_index=None):
     if _FILE_NAME == '':
         _init_filename(file_name)
     _set_data(read_file(_FILE_NAME))
     pub_index = _add_pub_in_file(pub)
-    save_in_file(_DATA)
+    save_in_file(_DATA, _FILE_NAME)
     if main_index is None:
         return pub_index
     _add_relation(main_index, pub_index, TypeOfRelations.QUOTES)
-    save_in_file(_DATA)
+    save_in_file(_DATA, _FILE_NAME)

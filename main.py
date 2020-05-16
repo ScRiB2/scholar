@@ -3,13 +3,7 @@ import time
 import bibtexparser
 from bibtexparser.bparser import BibTexParser
 from bs4 import BeautifulSoup
-from playsound import playsound
-from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
 
 import saver
 import scholarly
@@ -19,16 +13,24 @@ _MAIN = "https://scholar.google.com/scholar?&lookup=0&hl=en&q={0}"
 _LIBRARY = 'https://scholar.google.com/scholar?scilib=1&hl=en&as_sdt=0,5'
 _CITES = 'https://scholar.google.com/scholar?cites={0}&as_sdt=2005&sciodt=0,5&hl=en'
 
-_EMAIL = ''
-_PASSWORD = ''
+_EMAIL = 'swehgadsfgae@gmail.com'
+_PASSWORD = 'Sasha1999sas!'
 
 _PATH_TO_PROFILE = 'C:\\Users\\ScRiB\\AppData\\Local\\Google\\Chrome\\User Data 3'
 _PROFILE = 'Profile 5'
 _PATH_TO_DRIVER = 'C:\\Users\\ScRiB\\Desktop\\GChrome\\chromedriver.exe'
 
-_FILENAME = 'C:\\scholar.json'
+_RESULT_FILE = 'results\\result.json'
+_CONTINUE_FILE = 'results\\continue.json'
 
 _current_page = 0
+_CONTINUE_INFO = {
+    "query": "",  # последний запрос
+    "main_page": 0,  # номер страницы главных публикаций
+    "cities_index": 0,  # индекс публикации в списке главных публикаций
+    "citations_page": 1,  # номер страницы цитируемых публикаций
+    "last_index_in_result": 1 # следующий индекс в файле result
+}
 
 
 def open_window(driver, page):
@@ -45,23 +47,6 @@ def close_window(driver):
     _current_page = _current_page - 1
     driver.switch_to.window(driver.window_handles[_current_page])
     time.sleep(1)
-
-
-def next_page(driver):
-    """Пробуем перейти на следующую страницу публикаций."""
-    try:
-        navigation = driver.find_element_by_id('gs_n')
-    except NoSuchElementException:
-        return False
-
-    tds = navigation.find_elements_by_tag_name('td')
-    td = tds[len(tds) - 1]
-    try:
-        a = td.find_element_by_tag_name('a')
-    except NoSuchElementException:
-        return False
-    td.click()
-    return True
 
 
 def get_all_pubs(soup):
@@ -84,17 +69,17 @@ def get_all_pubs(soup):
 
 
 def refresh_library(driver):
-    login(driver)
+    utils.login(driver, url, _EMAIL, _PASSWORD, open_window, close_window)
     time.sleep(2)
     driver.refresh()
-    check_captcha(driver)
+    utils.check_captcha(driver)
 
     utils.set_page_in_20(driver)
 
-    check_captcha(driver)
+    utils.check_captcha(driver)
 
     open_window(driver, _LIBRARY)
-    check_captcha(driver)
+    utils.check_captcha(driver)
 
     if delete_pubs_in_lib(driver):
         close_window(driver)
@@ -122,7 +107,7 @@ def get_pubs_from_lib(driver):
     """Получаем все публикации из библиотеки"""
     open_window(driver, _LIBRARY)
 
-    check_captcha(driver)
+    utils.check_captcha(driver)
 
     html = driver.page_source
     html = html.replace(u'\xa0', ' ')
@@ -154,7 +139,7 @@ def get_pubs_from_lib(driver):
     driver.back()
     delete_pubs_in_lib(driver)
 
-    if check_captcha(driver):
+    if utils.check_captcha(driver):
         time.sleep(5)
         driver.get(_LIBRARY)
         delete_pubs_in_lib(driver)
@@ -165,38 +150,54 @@ def get_pubs_from_lib(driver):
 def get_cites_pubs_on_pub(driver, pub, main_index):
     """Получаем все публикации, в которых цитируется указанная"""
     driver.get(_CITES.format(pub.id_scholarcitedby))
-    check_captcha(driver)
+    utils.check_captcha(driver)
     utils.unchecked_citations(driver)
-    i = 0
+
+    for z in range(1, _CONTINUE_INFO['citations_page']):
+        time.sleep(0.5)
+        if not utils.next_page(driver):
+            print('Такой страницы с публикациями нет')
+            break
+
+    i = _CONTINUE_INFO['citations_page'] - 1
     while True:
         i = i + 1
+        _CONTINUE_INFO['citations_page'] = i
+        _CONTINUE_INFO['last_index_in_result'] = saver.get_last_index()
+        saver.save_in_file(_CONTINUE_INFO, _CONTINUE_FILE)
         add_pubs_in_lib(driver)
         pubs = get_pubs_from_lib(driver)
         close_window(driver)
         for citi in pubs:
-            saver.save(_FILENAME, citi, main_index)
-        if not next_page(driver) or i > 4:
+            saver.save(_RESULT_FILE, citi, main_index)
+        if not utils.next_page(driver) or i > 9:
             break
 
 
 def get_pubs_with_cities(driver):
     """Соединяем публикации с их цитирующими публикацями"""
     indexes = []
-    pubs = get_pubs_from_lib(driver)  # есть главные публикации, нужно получить статьи, которые их цитируют
+    pubs = get_pubs_from_lib(driver)
     for pub in pubs:
-        indexes.append(saver.save(_FILENAME, pub))
+        indexes.append(saver.save(_RESULT_FILE, pub))
 
-    for i in range(0, len(indexes)):
-        if pubs[i].citedby != 0:
-            get_cites_pubs_on_pub(driver, pubs[i], indexes[i])
-            continue
+    _CONTINUE_INFO['last_index_in_result'] = saver.get_last_index()
+    saver.save_in_file(_CONTINUE_INFO, _CONTINUE_FILE)
+
+    for p in range(_CONTINUE_INFO['cities_index'], len(indexes)):
+        _CONTINUE_INFO['cities_index'] = p
+        saver.save_in_file(_CONTINUE_INFO, _CONTINUE_FILE)
+        if pubs[p].citedby != 0:
+            get_cites_pubs_on_pub(driver, pubs[p], indexes[p])
+            _CONTINUE_INFO['citations_page'] = 1
+    _CONTINUE_INFO['cities_index'] = 0
 
 
 def delete_pubs_in_lib(driver):
     """Удаляем публикации из библиотеки"""
     try:
-        if next_page(driver):
-            check_captcha(driver)
+        if utils.next_page(driver):
+            utils.check_captcha(driver)
             delete_pubs_in_lib(driver)
             driver.get(_LIBRARY)
         menu = driver.find_element_by_id('gs_ab_md')
@@ -205,7 +206,7 @@ def delete_pubs_in_lib(driver):
 
         delete = menu.find_element_by_id('gs_res_ab_del')
         delete.click()
-        if check_captcha(driver):
+        if utils.check_captcha(driver):
             driver.get(_LIBRARY)
             delete_pubs_in_lib(driver)
         return True
@@ -214,124 +215,87 @@ def delete_pubs_in_lib(driver):
         return False
 
 
-def check_captcha(driver):
-    """Проверяем наличие капчи"""
-    try:
-        captcha = driver.find_element_by_id('recaptcha')
-        playsound('Sound_05952.mp3')
-        print('Ожидаем ввода капчи')
-
-        try:
-            WebDriverWait(driver, 3000).until(
-                EC.presence_of_element_located((By.XPATH, "//a[@href='//www.google.com/']"))
-            )
-        finally:
-            pass
-
-        return True
-
-    except NoSuchElementException:
-        try:
-            captcha = driver.find_element_by_id('gs_captcha_ccl')
-            playsound('Sound_05952.mp3')
-            print('Ожидаем ввода капчи')
-
-            try:
-                WebDriverWait(driver, 3000).until(
-                    EC.presence_of_element_located((By.ID, "gs_res_ccl"))
-                )
-            finally:
-                pass
-            return True
-
-        except NoSuchElementException:
-            return False
-
-
-def login(driver):
-    """Входим в аккаунт после очистки куки"""
-    open_window(driver, "some")
-    driver.get("chrome://settings/clearBrowserData")
-    time.sleep(2)
-    driver.find_element(By.XPATH, "//settings-ui").send_keys(Keys.ENTER)
-
-    time.sleep(3)
-
-    driver.get(url)
-
-    driver.find_element_by_id('gs_hdr_act_s').click()
-
-    time.sleep(1)
-
-    driver.find_element_by_id('identifierId').send_keys(_EMAIL)
-    driver.find_element_by_id('identifierNext').click()
-
-    time.sleep(3)
-
-    div = driver.find_element_by_class_name('Xb9hP')
-    input = div.find_element_by_tag_name('input')
-    input.send_keys(_PASSWORD)
-
-    time.sleep(1)
-
-    button = driver.find_element_by_class_name('qhFLie').find_element_by_tag_name('div')
-    button.click()
-
-    time.sleep(3)
-
-    close_window(driver)
-
-
 def clear_lib(driver):
     open_window(driver, _LIBRARY)
     if delete_pubs_in_lib(driver):
         close_window(driver)
 
 
-def get_driver():
-    options = webdriver.ChromeOptions()
-    options.add_argument('user-data-dir=' + _PATH_TO_PROFILE)
-    options.add_argument("--profile-directory=" + _PROFILE)
-    options.add_argument("--start-maximized")
-    # options.add_argument("--proxy-server=85.208.84.138:52332")
-
-    driver = webdriver.Chrome(executable_path=r'{0}'.format(_PATH_TO_DRIVER), options=options)
-    return driver
-
-
 if __name__ == '__main__':
-    print('Начинаем работу')
-    # query = input("Введите запрос: ")  # тут мы пишем наш запрос
-    query = 'компьютерная безопасность'
-    print("Запрос принят. Начинаем обработку")
-    saver.init_file(_FILENAME)
-    url = _MAIN.format(str(query))
+    driver = None
+    is_continue = -1
+    while is_continue != 0 and is_continue != 1:
+        try:
+            is_continue = int(input("Начать работу заново(0) или продолжить(1): "))
+        except Exception:
+            is_continue = -1
 
-    driver = get_driver()
-    driver.get(url)
+        if is_continue != 0 and is_continue != 1:
+            print('Введите корректный режим работы (0 или 1)')
+            continue
+        page = 1
 
+        if is_continue == 0:
+            query = input("Введите запрос: ")
+            _CONTINUE_INFO['query'] = query
+            saver.init_file(_RESULT_FILE)
+        else:
+            file = None
+            try:
+                file = saver.read_file(_CONTINUE_FILE)
+            except FileNotFoundError:
+                print('Файл с информацией о продолжении не найден')
+                exit(-1)
+            if 'query' not in file \
+                    or 'main_page' not in file \
+                    or 'cities_index' not in file \
+                    or 'citations_page' not in file \
+                    or 'last_index_in_result' not in file:
+                print('В файле с информацией о продолжении недостаточно данных')
+                exit(-2)
+            _CONTINUE_INFO = file
+            query = _CONTINUE_INFO['query']
+            page = _CONTINUE_INFO['main_page']
+            saver.set_index(_CONTINUE_INFO['last_index_in_result'])
+            print('Последний запрос: ', query)
 
-    try:
-        driver.find_element_by_id('gs_hdr_act_s')
-        login(driver)
-    except NoSuchElementException:
-        pass
+        print("Запрос принят. Начинаем обработку")
 
-    check_captcha(driver)
+        url = _MAIN.format(str(query))
+        driver = utils.get_driver(_PATH_TO_DRIVER, _PATH_TO_PROFILE, _PROFILE)
+        driver.get(url)
 
-    utils.set_page_in_20(driver)
-    check_captcha(driver)
-    clear_lib(driver)
+        try:
+            driver.find_element_by_id('gs_hdr_act_s')
+            utils.login(driver, url, _EMAIL, _PASSWORD, open_window, close_window)
+        except NoSuchElementException:
+            pass
 
-    utils.unchecked_citations(driver)
-    i = 0
-    while True:
-        i = i + 1
-        add_pubs_in_lib(driver)
-        get_pubs_with_cities(driver)
-        close_window(driver)
-        if not next_page(driver) or i > 4:
-            break
+        utils.check_captcha(driver)
 
-    # print('Программа завершила работу')
-    # driver.quit()
+        utils.set_page_in_20(driver)
+        utils.check_captcha(driver)
+        clear_lib(driver)
+
+        utils.unchecked_citations(driver)
+
+        if is_continue == 1:
+            for i in range(1, page):
+                time.sleep(0.5)
+                if not utils.next_page(driver):
+                    print('Такой страницы с главными публикациями нет')
+                    break
+
+        i = page - 1
+        while True:
+            i = i + 1
+            _CONTINUE_INFO['main_page'] = i
+            saver.save_in_file(_CONTINUE_INFO, _CONTINUE_FILE)
+            add_pubs_in_lib(driver)
+            get_pubs_with_cities(driver)
+            close_window(driver)
+            if not utils.next_page(driver):
+                break
+
+        driver.quit()
+    print('Программа завершила работу')

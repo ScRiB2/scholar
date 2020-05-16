@@ -1,16 +1,15 @@
 """scholarly.py"""
 
-from bs4 import BeautifulSoup
-
-import arrow
-import bibtexparser
 import codecs
 import hashlib
 import pprint
 import random
 import re
-import requests
 import time
+
+import arrow
+import requests
+from bs4 import BeautifulSoup
 
 _GOOGLEID = hashlib.md5(str(random.random()).encode('utf-8')).hexdigest()[:16]
 _COOKIES = {'GSP': 'ID={0}:CF=4'.format(_GOOGLEID)}
@@ -35,6 +34,8 @@ _EMAILAUTHORRE = r'Verified email at '
 
 _SESSION = requests.Session()
 _PAGESIZE = 100
+
+_NON_FIND_ID = -1
 
 
 def use_proxy(http='socks5://127.0.0.1:9050', https='socks5://127.0.0.1:9050'):
@@ -161,13 +162,15 @@ class Publication(object):
             if title.find('a'):
                 a = title.find('a')
                 self.bib['url'] = a['href']
-                if 'data-clk' in a:
+                if 'data-clk' in a.attrs:
                     data_clk = a['data-clk']
                     data_clk = data_clk[data_clk.find('&d=') + 3:]
                     temp = data_clk.split('&')
                     self.id = int(temp[0])
                 else:
-                    self.id = -1
+                    global _NON_FIND_ID
+                    self.id = _NON_FIND_ID
+                    _NON_FIND_ID = _NON_FIND_ID - 1
             authorinfo = databox.find('div', class_='gs_a')
             self.bib['author'] = ' and '.join([i.strip() for i in authorinfo.text.split(' - ')[0].split(',')])
             if databox.find('div', class_='gs_rs'):
